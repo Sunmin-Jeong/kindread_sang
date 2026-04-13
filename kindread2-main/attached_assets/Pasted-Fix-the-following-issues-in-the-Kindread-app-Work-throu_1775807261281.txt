@@ -1,0 +1,192 @@
+Fix the following issues in the Kindread app. Work through 
+each one in order and confirm before moving to the next.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 1 — MISSING ICONS ([?] placeholders)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Several screens show [?] boxes instead of icons — visible in 
+the New Club type selection screen and Milestones section of 
+Reading Streak. These are likely missing icon imports from 
+lucide-react-native or a similar icon library.
+
+Audit every screen for missing icon references. Replace any 
+broken or unresolved icon with the correct icon name from the 
+library already used in the project. Specifically:
+- New Club screen: Session type and Club type icons
+- Milestones section in StreakScreen: milestone badge icons
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 2 — QUOTE DISPLAY DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The large curly quote mark (" ) before quote text in BookmarkCard 
+looks visually broken — it appears too large and misaligned.
+
+Replace the current quote styling with this treatment:
+- Left border: a 3px solid vertical bar in the app's green color
+- Quote text: italic, slightly indented (16px left padding)
+- Text color: slightly muted (e.g. #444 instead of black)
+- Remove the large standalone quotation mark character entirely
+- Optionally show a small inline " character in the app's 
+  green color at the start of the text, same font size as body
+
+Apply this consistently across BookmarkCard and 
+BookmarkDetailScreen.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 3 — PROFILE LINK FROM POST DETAIL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+On BookmarkDetailScreen, tapping the author avatar or username 
+at the top of the post does nothing. 
+
+Make the avatar and username tappable and navigate to that 
+user's public profile page (same as tapping from the feed).
+This should work whether the post belongs to the current 
+user (navigate to Me tab) or another user (navigate to their 
+public profile).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 4 — SESSION CREATION BUG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session creation throws "Failed to create session" error 
+(visible in screenshot: [ClubStorage] Error creating session).
+
+Debug lib/club-storage.ts createSession (or equivalent) 
+function. Log the exact Supabase error to console. Common 
+causes to check:
+- meet_date column expects a specific format — ensure the 
+  value being sent is a valid ISO 8601 timestamp
+- Required columns that are null: check clubs table constraints
+  and ensure all NOT NULL columns are being sent
+- The club_sessions table migration may not have been applied —
+  if session creation writes to club_sessions, verify that 
+  table exists in Supabase, otherwise write only to clubs table
+
+Fix the root cause. After fixing, test creating a session 
+end-to-end and confirm it appears in Discover > Sessions & Clubs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 5 — SESSION CREATION FLOW (fewer steps)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Currently session creation is 3 separate screens. Collapse 
+into a single bottom sheet with scrollable sections.
+
+The new Create Session flow (one screen / bottom sheet):
+
+  SECTION 1 — Book (required)
+  Search field: "Which book?" — same book search as before
+  Shows selected book cover + title once chosen
+
+  SECTION 2 — Format (required)  
+  Three pill buttons in a row: Offline · Online · Read-along
+  (replaces the full-screen "How will you meet?" step)
+
+  SECTION 3 — Details (required/optional)
+  - Session name: text input (optional — defaults to book title 
+    if left empty)
+  - Reading deadline: native date picker (DateTimePicker) 
+    — label "Finish reading by"
+  - If Offline selected: city text input
+  - If Online/Read-along: video link input (optional)
+  - Language: dropdown or pill selector (optional, 
+    defaults to user's profile language)
+  - Description: multiline text input, max 200 chars (optional)
+
+  Bottom: "Create Session" button — enabled only when 
+  book is selected and deadline is set
+
+Remove the 3-step wizard screens entirely. The entry point 
+"Start a reading session +" in Discover opens this single 
+bottom sheet.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 6 — SESSION CARDS (more informative)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current session cards in Discover > Sessions & Clubs only 
+show a cover image, name, and description. They need to show 
+the key info a reader needs to decide whether to join.
+
+Update each session card to show:
+- Cover image (full-bleed top, keep current style)
+- Session name (bold, over image as overlay — keep current)
+- Row 1: format icon + "Online" or "Offline" · member count 
+  icon + "X members" (keep current)
+- Row 2 (NEW): book cover thumbnail (small, 32px) + book title
+- Row 3 (NEW): deadline — "Ends April 30" or "X days left"
+  in a subtle tag/chip; if past deadline show "Ended" in grey
+- Row 4 (NEW): language tag if language_code is set 
+  (e.g. "🇰🇷 Korean" or "🇺🇸 English")
+- Description text below the card image (keep current)
+
+Also update the YOUR SESSIONS strip cards on FeedScreen 
+to show: book cover + session name + "X days left" or "Ended".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 7 — STATS TEXT CLIPPED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In the Stats tab on the profile screen, numbers like "0d" and 
+"1d" are clipped — the "d" suffix is cut off by the container.
+
+Fix by:
+- Increasing the container height for stat tiles by 8–12px
+- Ensuring the font size of the stat number fits within the 
+  tile with padding: at minimum 8px top and bottom padding
+- Use adjustsFontSizeToFit on the stat number Text component 
+  with a minimumFontScale of 0.7 so long values scale down 
+  instead of clipping
+- Check all 4 stat tiles (Books, Streak, Following, Followers)
+  and the THIS MONTH grid (Books, Posts, Streak, Total Books)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 8 — FAB BUTTON CONSISTENCY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The floating action button (pencil icon) on the profile/Me 
+screen is the old style (green circle). On the Feed screen 
+it is the new black circle style. Make them consistent.
+
+Update the FAB on the Me/profile screen to match the Feed 
+screen FAB exactly: same size, same black background color, 
+same pencil icon, same shadow/elevation, same position 
+(bottom right, same inset values).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 9 — VOTE TAB IN CLUB DETAIL (hide for MVP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The club/session detail screen shows 4 tabs: 
+Feed · Sessions · Members · Vote
+
+Remove the Vote tab entirely for MVP — the voting feature 
+is not built yet and showing an empty tab creates a dead end.
+
+The detail screen should only show: Feed · Members
+(Sessions sub-tab inside a club detail is also premature — 
+remove it too unless it has real content to show)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIX 10 — NEW BOOKMARK MISSING QUOTE TYPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The New Bookmark screen (accessed via old flow) shows 
+Progress / Review toggle but no Quote option. 
+
+This screen appears to be a legacy flow. For MVP, the 
+primary posting flow should always go through PostFABMenu 
+(Log reading / Save a quote / Write a review).
+
+Either:
+a) Add Quote as a third toggle option to the New Bookmark 
+   screen to match the FAB flow, OR
+b) Remove the New Bookmark screen entirely and route the 
+   pencil FAB on the profile/Me screen to open PostFABMenu 
+   instead (preferred — keeps one unified posting flow)
+
+Option (b) is recommended. Make the pencil FAB everywhere 
+open PostFABMenu, not the legacy CreateBookmarkScreen.

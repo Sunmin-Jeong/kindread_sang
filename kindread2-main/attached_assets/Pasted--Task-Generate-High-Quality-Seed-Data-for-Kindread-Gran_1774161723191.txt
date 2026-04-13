@@ -1,0 +1,38 @@
+**Task: Generate High-Quality Seed Data for "Kindread" (Grant Application Version)**
+
+Please generate and insert the following sample data into the Supabase database to create a realistic "Editorial & Global" community feel. All content should reflect our vision: "Psychological Safety," "Intellectual Growth," and "Empathy."
+
+**1. Sample Users (Profiles):**
+- Create 5 diverse users:
+    1. 'Minjun' (Korean, Bio: "평범한 일상 속에서 철학 한 조각을 찾습니다.")
+    2. 'Sarah' (US, Bio: "Seeking truth through global literature.")
+    3. 'Kenji' (Japan, Bio: "Different perspectives, one human heart.")
+    4. 'Elena' (Spain, Bio: "Building a safer world, one book at a time.")
+    5. 'Jiho' (Korean, Bio: "성장보다는 성숙을 꿈꾸는 독서가.")
+
+**2. Sample Clubs & Sessions:**
+- **Ongoing Club:** "The Midnight Philosophers" (Format: Online, Description: "A global circle exploring life's deep questions.")
+- **One-time Session:** "Demian: The Struggle of Youth" (Format: Offline, Location: "Gangnam Book Cafe", Book: 'Demian' by Hermann Hesse).
+- **Read-along Session:** "14-Day Challenge: Man's Search for Meaning" (Format: Read-along, Deadline: 2026-04-10).
+
+**3. Sample Feed Content (Bookmarks/Posts):**
+Please mix Korean and English posts to show global interaction.
+
+- **[Reading Log]** Minjun: Reading 'Demian'. Progress 45%. 
+  - Note: "새가 알을 깨고 나오듯, 저도 저만의 세계를 깨는 중입니다."
+- **[Quote]** Sarah: From 'The Alchemist'. 
+  - Quote: "It's the possibility of having a dream come true that makes life interesting."
+  - Note: "이 문장이 오늘 저를 다시 움직이게 하네요. 여러분의 꿈은 무엇인가요?"
+- **[Review]** Kenji: Rated 5 stars for 'Human Acts' by Han Kang.
+  - Review: "Heartbreaking but necessary. A powerful reminder of human dignity. 역지사지의 마음으로 읽어 내려갔습니다."
+- **[Progress]** Elena: Reading 'Justice' by Michael Sandel.
+  - Note: "Different opinions welcomed here. Let's discuss what is right."
+
+**4. Interaction Data:**
+- Add mutual 'Likes' and encouraging 'Comments' between users.
+  - Example: Elena commenting on Minjun's post: "Cheering for your journey, Minjun! 응원합니다!"
+
+**Technical Instruction:**
+- Use the `supabase.from('table').insert()` method. 
+- Ensure `book_id` matches existing books in the database or create them first.
+- Make sure the dates are current (March 2026).

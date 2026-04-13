@@ -1,0 +1,195 @@
+Redesign the Clubs feature in Kindread with two distinct club types: 
+Session (one-time) and Club (ongoing). All text must be in English.
+
+---
+
+PART 1: DATA MODEL
+
+Update the clubs table in Supabase:
+  - type: 'session' | 'club' (required)
+  - format: 'offline' | 'online' | 'read_along' (required)
+  - book_id: uuid FK to books (required for sessions, optional for clubs)
+  - meet_date: timestamptz (for sessions and club meetups)
+  - location: text nullable (for offline)
+  - link: text nullable (for online)
+  - deadline: timestamptz nullable (for read_along sessions)
+  - session_number: int nullable (for ongoing clubs, tracks which session)
+
+Add a club_sessions table for ongoing clubs:
+  - id, club_id, session_number, book_id, format
+  - meet_date, location, link, deadline
+  - status: 'upcoming' | 'active' | 'completed'
+
+Add a club_votes table for next book voting:
+  - id, club_id, book_id, proposed_by (user_id), created_at
+
+Add a club_vote_responses table:
+  - id, vote_id, user_id, created_at
+  (one row per user per vote = one vote per user per book candidate)
+
+---
+
+PART 2: CLUBS LIST PAGE
+
+Header:
+  - Left: "Clubs" in Playfair Display, 26px, fontWeight 600
+  - Right: green circular + button (36px) → opens Create flow
+
+Tabs: Mine | Discover
+
+Card design for each club:
+
+SESSION card:
+  - Thumbnail: book cover (54x54px, borderRadius 10px)
+  - Name + tags row: purple "Session" badge + format badge
+    (📍 Offline / 🖥 Online / 📖 Read-along)
+  - Bottom row: member avatars (stacked, 24px each, -5px overlap) + 
+    member count on left, "D-X · [date]" on right
+  - If format is read_along: show member progress bars instead of bottom row
+    (3 bars max: Me in purple #8B5CF6, others in green #2A7A52)
+
+CLUB card (ongoing):
+  - Thumbnail: cover image or emoji placeholder (54x54px, borderRadius 10px)
+  - Name + tags row: green "Club" badge + format badge + "Session X" badge
+  - Bottom row: stacked member avatars + count, D-X countdown on right
+
+---
+
+PART 3: SESSION DETAIL PAGE
+
+Top bar: ← Back (left) · Invite button (right, green text)
+
+Book hero section (border-bottom):
+  - Book cover: 76x108px, borderRadius 6px, shadow
+  - Right side: Session badge (purple) + format badge
+    Book title (17px, 700) · Author · pages
+  - Stats row: Members count | D-X until meetup
+
+Info rows (icon + label + value):
+  - 📅 Date and time
+  - 📍 Location (with "Map →" link) OR 🖥 Video link OR ⏱ Deadline
+
+Tabs: Feed | Progress | Members
+
+FEED TAB:
+  - Posts from club members only, filtered to this session
+  - Each post: avatar + name + time + page badge (e.g. "p.201") right-aligned
+  - Quote in green Playfair serif (if exists)
+  - Note in Inter sans-serif (if exists)
+  - ♡ count · 💬 count actions
+
+PROGRESS TAB:
+  - "Member progress" section label
+  - Each member row: avatar (24px) + name + progress bar + percentage
+  - Current user highlighted in purple (#8B5CF6)
+  - Others in green (#2A7A52)
+  - Pull from bookmarks table for this book + these users
+
+MEMBERS TAB:
+  - Each row: avatar + name + @handle + "Host" badge for creator
+
+Fixed bottom bar: "Log today's reading" button → opens log sheet
+  pre-selected to this session's book
+
+---
+
+PART 4: CLUB DETAIL PAGE (ongoing)
+
+Cover hero (200px tall):
+  - Full-width cover image with dark gradient overlay (bottom to top)
+  - Club name: 24px, 700, white, bottom-left
+  - Meta row: Club badge (semi-transparent white bg) + format + member count
+  - ← Back and Invite buttons: top corners, semi-transparent dark pill buttons
+
+Current session card (16px margin, border, borderRadius 14px):
+  - Header band: "Current · Session X" label (left) + "D-X · [date]" (right)
+  - Body: book cover (52x74px) + title + author + format badge
+  - Mini progress bars for top 2 members (Me highlighted in purple)
+  - Tapping the card → navigates to that session's detail page
+
+Tabs: Feed | Vote | Sessions | Members
+
+FEED TAB: same as session feed, but shows all club sessions' posts
+
+VOTE TAB:
+  - Section header: "Vote · Next book" + "+ Suggest" button (right)
+  - Each candidate row: cover (36x50px) + title + "suggested by [name]"
+    + thin progress bar (fill % = votes/total members) + vote count
+  - Vote button: outlined green, turns filled when voted
+  - One vote per user — voting again removes previous vote (toggle)
+  - Pull candidates from club_votes, responses from club_vote_responses
+
+SESSIONS TAB:
+  - Current session at top (same card as above)
+  - "Past sessions" horizontal scroll:
+    Each item: book cover (54x76px) + "Session X" label below
+
+MEMBERS TAB:
+  - Each row: avatar + name + @handle + Host/Member badge
+  - If require_approval is on, show pending requests at top for host
+
+---
+
+PART 5: CREATE FLOW
+
+Entry point: + button on Clubs list header
+
+STEP 0 — Type select screen:
+  Title: "What kind of club?" (Playfair Display, 26px)
+  Subtitle: "Choose how you want to read together."
+
+  Two option cards (full-width, border, borderRadius 16px):
+
+  SESSION card:
+    - Icon: 📚, Name: "Session", Tag: purple "One-time"
+    - Description: "Built around a single book. Meet once, then it's done."
+    - Example tags: 📍 Offline meetup · 🖥 Online discussion · 📖 Read-along
+    - Selecting → goes to Session create flow
+
+  CLUB card:
+    - Icon: 🌿, Name: "Club", Tag: green "Ongoing"  
+    - Description: "A recurring group. Pick new books each session, 
+      or explore movies, essays, anything."
+    - Example tags: 📚 Book club · 🎬 Film club · ✍️ Writing group
+    - Selecting → goes to Club create flow
+
+SESSION CREATE (3 steps, shown as progress dots):
+
+  Step 1 — Format:
+    "How will you meet?"
+    3-column grid: 📍 Offline / 🖥 Online / 📖 Read-along
+    Each option: icon + label + subtitle, border, borderRadius 12px
+    Selected state: green border + light green background
+
+  Step 2 — Book:
+    "Which book?"
+    Search input → shows results from books table
+    Each result: cover + title + author, green checkmark when selected
+
+  Step 3 — Details:
+    "When and where?"
+    - Date input (always shown)
+    - If Offline: Location text input
+    - If Online: Link text input
+    - If Read-along: Deadline date input
+    - Session name input (optional, placeholder: "e.g. Steppenwolf read-along")
+    
+    Submit: "Create Session ✓" → creates club with type='session',
+    navigates to session detail
+
+CLUB CREATE:
+  Same format selection + name + description + cover image upload
+  + Require approval toggle
+  + Welcome message template (optional)
+  → Creates club with type='club', session_number starts at 1
+
+---
+
+DESIGN TOKENS (consistent with rest of app):
+  Green: #2A7A52 · Green bg: #E8F3ED
+  Purple (Session): #7C3AED · Purple bg: #F3F0FF
+  Border: #EBEBEB · Text: #0a0a0a · Muted: #777
+  Font UI: Inter · Font display: Playfair Display
+  No italics · White background throughout
+  All async: try/catch/finally
+  Border radius: cards 12-16px, buttons 10-12px, pills 20px

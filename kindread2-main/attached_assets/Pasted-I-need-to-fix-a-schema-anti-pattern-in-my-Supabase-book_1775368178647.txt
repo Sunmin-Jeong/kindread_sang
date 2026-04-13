@@ -1,0 +1,59 @@
+I need to fix a schema anti-pattern in my Supabase bookmarks table. 
+Currently, `text_content` encodes rating and quoteText as a hidden 
+`<!--meta:{...}:meta-->` prefix string. This needs to be proper columns.
+
+**Step 1 — Run this SQL migration in Supabase SQL editor:**
+
+ALTER TABLE bookmarks
+  ADD COLUMN IF NOT EXISTS rating        NUMERIC(2,1) CHECK (rating >= 0 AND rating <= 5),
+  ADD COLUMN IF NOT EXISTS quote_text    TEXT,
+  ADD COLUMN IF NOT EXISTS mood_tags     TEXT[] DEFAULT '{}';
+
+-- Migrate existing encoded data out of text_content
+UPDATE bookmarks
+SET
+  rating = (
+    REGEXP_MATCH(text_content, '<!--meta:(.*?):meta-->') IS NOT NULL AND
+    (text_content::jsonb #>> '{rating}') IS NOT NULL
+  )::text::numeric,
+  quote_text = (
+    REGEXP_MATCH(text_content, '<!--meta:(.*?):meta-->') IS NOT NULL AND
+    (text_content::jsonb #>> '{quoteText}') IS NOT NULL
+  )::text,
+  text_content = REGEXP_REPLACE(text_content, '<!--meta:.*?:meta-->', '', 'g')
+WHERE text_content LIKE '<!--meta:%';
+
+-- Also fix post_type: we have 3 types not 2
+-- Change 'reflection' to proper 'review' and 'quote' split
+-- (log = reading log, quote = saved quote, review = written review)
+ALTER TABLE bookmarks
+  DROP CONSTRAINT IF EXISTS bookmarks_post_type_check;
+
+ALTER TABLE bookmarks
+  ADD CONSTRAINT bookmarks_post_type_check 
+  CHECK (post_type IN ('log', 'quote', 'review'));
+
+**Step 2 — Update lib/storage.ts:**
+
+Remove all logic that reads or writes the `<!--meta:{...}:meta-->` 
+prefix pattern. Replace with:
+
+- For reviews: write `rating` column directly (0.5–5.0 in 0.5 steps)
+- For quotes: write `quote_text` column directly
+- For logs: `rating` and `quote_text` are null
+
+Update all SELECT queries that read bookmarks to include the new 
+`rating` and `quote_text` columns, and remove any parsing of the 
+meta prefix from the returned data.
+
+Update the TypeScript Bookmark type to add:
+  rating?: number | null
+  quoteText?: string | null
+  moodTags?: string[]
+
+**Step 3 — Update all UI components** that currently parse the meta 
+prefix out of text_content (BookmarkCard, BookmarkDetailScreen, 
+EditBookmarkScreen) to instead read from the new fields directly.
+
+Make sure no meta prefix parsing code remains anywhere in the codebase 
+after this change. Search for '<!--meta' to verify it's gone.

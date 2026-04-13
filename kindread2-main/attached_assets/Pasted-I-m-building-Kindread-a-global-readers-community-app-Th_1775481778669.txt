@@ -1,0 +1,143 @@
+I'm building Kindread, a global readers community app. The codebase 
+already has: reading logs/quotes/reviews (BookmarkCard, PostFABMenu), 
+clubs table, basic profile screen, and Supabase auth. 
+
+I need you to build the 5 missing MVP features below. Work through them 
+one at a time and confirm each before moving to the next.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURE 1 — FOLLOW SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run this in Supabase SQL editor:
+
+  CREATE TABLE IF NOT EXISTS follows (
+    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    follower_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(follower_id, following_id)
+  );
+
+  CREATE INDEX idx_follows_follower ON follows(follower_id);
+  CREATE INDEX idx_follows_following ON follows(following_id);
+
+In lib/storage.ts, add these 4 functions:
+- followUser(followerId, followingId)
+- unfollowUser(followerId, followingId)  
+- isFollowing(followerId, followingId) → boolean
+- getFollowCounts(userId) → { followers: number, following: number }
+
+On the profile screen (Me tab and any public profile view):
+- Show follower/following counts (replace the current hardcoded 0s)
+- Show a Follow/Unfollow button when viewing someone else's profile
+- Tapping the counts opens a simple modal list of followers/following
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURE 2 — SOCIAL FEED (people you follow)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update FeedScreen so it shows two tabs:
+- "Friends" tab → posts from people the current user follows, 
+  ordered by created_at DESC
+- "All" tab → keep existing behavior (own posts for now; 
+  public feed can come later)
+
+The feed query for Friends tab should join bookmarks 
+with profiles and filter by:
+  WHERE bookmarks.user_id IN (
+    SELECT following_id FROM follows WHERE follower_id = currentUserId
+  )
+
+If the user follows nobody yet, show an empty state:
+  "Find readers to follow — try Discover"
+  with a button that navigates to the Search/Discover tab.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURE 3 — NOTIFICATIONS (the 3 core triggers)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The notifications table already exists. Wire up these 3 Supabase 
+database triggers via SQL:
+
+Trigger 1 — Like notification:
+  When a row is inserted into bookmark_likes,
+  insert into notifications:
+    { user_id: bookmark.user_id, actor_id: new.user_id, 
+      type: 'like', bookmark_id: new.bookmark_id }
+  (skip if actor = bookmark owner — don't notify yourself)
+
+Trigger 2 — Comment notification:
+  When a row is inserted into bookmark_comments,
+  insert into notifications:
+    { user_id: bookmark.user_id, actor_id: new.user_id,
+      type: 'comment', bookmark_id: new.bookmark_id }
+  (skip if actor = bookmark owner)
+
+Trigger 3 — Session join notification:
+  When a row is inserted into club_members,
+  insert into notifications:
+    { user_id: club.host_id, actor_id: new.user_id,
+      type: 'session_join', club_id: new.club_id }
+  (skip if the joiner is the host)
+
+In NotificationsScreen, fetch and render these notifications 
+in order. Each row shows: avatar, "{name} liked your post / 
+commented / joined your session", time ago. 
+Tapping a like/comment notification navigates to that bookmark.
+Show an unread dot on the bell icon in the header until viewed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURE 4 — BOOK SESSIONS (simplified clubs for MVP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The clubs table already has type: 'session'. For MVP, 
+ClubsListScreen should be renamed/reframed as "Sessions" 
+and show only clubs where type = 'session'.
+
+Simplify CreateClubFlowScreen for session creation to collect 
+only these fields:
+- Book (required) — use existing book search
+- Session name (required)
+- End date / reading deadline (required)
+- Online or offline (toggle)
+- If offline: city field
+- If online: optional link field
+- Cover image (optional)
+- Description (optional, max 200 chars)
+
+Remove from the create flow for now: join questions, 
+welcome_template, vote features, staff roles, require_approval 
+toggle (default all sessions to auto-join for MVP).
+
+On the Session detail screen (ClubHomeScreen), show:
+- Book cover + title
+- Member count + deadline countdown ("12 days left")
+- Join/Leave button
+- Feed of members' bookmarks tagged to this session
+- A "Log reading in this session" shortcut that opens 
+  the PostFABMenu pre-filled with this book + club_id
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURE 5 — PUBLIC PROFILE PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When tapping any user's avatar or name anywhere in the app 
+(feed, session member list, comments), navigate to their 
+public profile. This is the same layout as the Me tab but:
+- Shows Follow/Unfollow button instead of Edit Profile
+- Shows follower/following counts (tappable)
+- Shows their public posts (is_public = true only)
+- Shows their active sessions
+- Does NOT show their private stats
+
+Make sure every BookmarkCard's avatar/name is tappable 
+and routes to the correct user profile.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT TO LEAVE OUT FOR NOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Do NOT build: ongoing clubs, club voting, staff roles, 
+push notifications (in-app only for now), monetization, 
+advanced analytics, or the BooksThisMonthScreen / StreakScreen 
+deep flows. Keep the tab bar as: Feed · Discover · Sessions · Me.

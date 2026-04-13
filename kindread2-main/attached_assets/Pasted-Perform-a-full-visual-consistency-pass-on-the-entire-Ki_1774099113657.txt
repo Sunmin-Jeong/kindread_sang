@@ -1,0 +1,234 @@
+Perform a full visual consistency pass on the entire Kindread app.
+The goal is ONE unified design language across all screens.
+
+---
+
+DESIGN TOKENS — apply everywhere, no exceptions:
+
+Colors:
+  --green:        #2A7A52
+  --green-bg:     #E8F3ED
+  --green-mid:    #C0DECE
+  --text:         #0A0A0A
+  --text-2:       #444444
+  --text-3:       #888888
+  --border:       #EBEBEB
+  --surface:      #F7F7F7
+  --white:        #FFFFFF
+  --red:          #EF4444
+  --amber:        #F59E0B
+  --purple:       #7C3AED
+  --purple-bg:    #F3F0FF
+
+Typography:
+  Display / headers:  Playfair Display (no italic)
+  All UI text:        Inter
+  Quotes only:        Playfair Display, green color
+  NO italic anywhere else
+
+Spacing unit: 20px horizontal padding on all screens
+Border radius:
+  Cards:    12px
+  Buttons:  10px
+  Pills:    20px
+  Avatars:  50%
+  Covers:   5-6px
+
+Borders: 1px solid #EBEBEB (light), never heavier
+Shadows: 0 2px 8px rgba(0,0,0,0.08) for covers/cards only
+
+---
+
+GLOBAL COMPONENTS — standardize these:
+
+Top bar (every screen except Feed):
+  Height: 52px top padding + content
+  Left: ← Back button (Inter 14px 500, color #0A0A0A)
+    — EVERY screen that is not a root tab MUST have this
+  Center: page title (Inter 15px 600)
+  Right: action button if needed (Inter 13px 600, color --green)
+  Border-bottom: 1px solid #EBEBEB
+  Background: white, sticky
+
+Avatar:
+  Sizes: 28 / 34 / 44 / 58 / 72px depending on context
+  Border-radius: 50%
+  Streak dot (if streak >= 3): 🔥 in 13x13px white circle,
+    bottom-right, box-shadow: 0 0 0 1px #eee
+
+Tag/Badge pills:
+  Font: Inter 11px 500
+  Padding: 3px 9px
+  Border-radius: 20px
+  Variants: green, grey, purple, orange, blue
+  (defined above)
+
+Buttons:
+  Primary: bg #0A0A0A, white text, border-radius 10px, padding 14px, full-width
+  Secondary: bg white, border 1.5px #EBEBEB, same sizing
+  Green CTA: bg --green, white text (for Join, Create etc.)
+  All: Inter 14px 600, font-family Inter
+
+Section labels:
+  Inter 10px 700, uppercase, letter-spacing 0.1em, color #888
+
+---
+
+SCREEN 1: FEED
+
+Keep current layout but fix:
+- Header: "Kindread" in Playfair Display 26px 600 (not bold weight)
+- Streak/books strip: smaller, 13px Inter
+  Format: 🔥 X day streak  |  📈 X books this month
+  Both tappable → navigate to stats screens
+- Remove all Korean text from UI labels (keep user-generated content as-is)
+- Progress pill (p.X–X): Inter 11px 600, color --green,
+  background --green-bg, border-radius 20px, no border
+- All tab underlines: use --text color (#0A0A0A), not green
+- FAB: 52px circle, background --green, shadow as above
+
+---
+
+SCREEN 2: DISCOVER
+
+Remove the Books/Clubs pill toggle at the very top.
+Replace with proper tabs below the search bar.
+
+New structure:
+  Header: "Discover" in Playfair Display 26px
+  Search bar: background #F5F5F5, border-radius 12px, no border
+  Filter chips row (horizontal scroll):
+    💬 Language chip (shows selected languages)
+    📍 Location chip (shows city or "Global")
+    Format chip
+    Each chip: Inter 12px, pill shape, border 1px #EBEBEB
+    Active chip: background #0A0A0A, white text
+  Context strip (when filters active):
+    Light grey bg, 12px text showing active filters
+  Tabs: Books | Readers | Sessions & Clubs
+    (same tab style as Feed: underline on active, Inter 13px)
+
+Books tab: ranked list with cover + title + author +
+  language flag + reader count + star rating + Want button
+
+Readers tab: 3 sections —
+  Near you (if location set) / Reading same books / Global
+
+Sessions & Clubs tab: session cards + club cards
+  with language + location + D-day info
+
+Empty state (when nothing loaded yet):
+  Show placeholder cards in skeleton/shimmer style
+  Never show a raw spinner in the middle of blank white space
+
+---
+
+SCREEN 3: CLUB DETAIL
+
+CRITICAL FIX: Add ← Back button (top left, always visible)
+
+If cover image exists:
+  Full-width hero (200px), dark gradient overlay bottom-to-top
+  Back button: semi-transparent dark pill (top-left, z-index 10)
+  Club name: white, 22px 700, bottom of hero
+  Meta row: format + member count in white/semi-transparent
+
+If no cover image:
+  Plain white top bar with back button
+  Club name in Playfair Display 22px below top bar
+
+Below hero:
+  Current session card (if ongoing club) with border-radius 14px
+  OR book hero (if one-time session) with cover + info
+
+Tabs: Feed | Progress | Vote | Sessions | Members
+  (remove "Bookshelf" tab — redundant, books are shown per session)
+
+Tab content:
+  Feed: posts from members of this club only
+  Progress: member progress bars (current user in purple)
+  Vote: next book candidates with vote bars + vote buttons
+  Sessions: current session card + past sessions horizontal scroll
+  Members: list with avatar + name + handle + Host badge
+
+Bottom bar: 
+  "Log today's reading" button (green, full-width)
+  Only show if user is a member
+
+---
+
+SCREEN 4: ME (PROFILE)
+
+Remove "RECENTLY TAGGED" section — redundant with Reading tab.
+Remove the clubs grid from the main profile view.
+
+New structure:
+
+Top: settings gear (⚙) top right only, no other top bar content
+
+Hero section:
+  Avatar (72px) + name (Playfair Display 22px) + handle (13px muted)
+  Edit Profile button (secondary pill button)
+  Bio text (13px, 2 lines max)
+  Location + Language pills row:
+    📍 Seoul, Korea  ·  🇰🇷 Korean  🇺🇸 English
+  Stats row (4 columns, bordered):
+    Books | Streak | Following | Followers
+    Values in Playfair Display 20px
+
+Tabs: Reading | Posts | Clubs | Stats
+
+Reading tab:
+  Currently reading card (surface bg, progress bar)
+  Last 7 days strip (7 circles, filled = read day)
+  Finished shelf (horizontal scroll, 64x90px covers)
+  Want to read list (cover + title + Start button)
+
+Posts tab:
+  User's own progress + review posts
+  Each has book cover thumbnail + content + actions
+  NO avatar (it's always "me") — saves space
+
+Clubs tab:
+  List of joined sessions and clubs
+  Session: book cover thumb + name + type badge + countdown
+  Club: emoji/cover + name + type badge + next session
+
+Stats tab:
+  Year at a glance (12-column grid)
+  Total stats row (books/pages/best streak)
+  Average rating + distribution bars
+  Genre breakdown bars
+
+---
+
+SCREEN 5: OTHERS' PROFILE
+
+Top bar with ← Back
+
+Hero: same structure as Me but:
+  Follow + Message buttons instead of Edit Profile
+  Cannot edit
+
+Same 4 tabs but Posts/Clubs/Stats may be limited
+  based on privacy settings (show "Private" state gracefully)
+
+---
+
+CONSISTENCY RULES:
+
+1. Every non-root screen needs ← Back in top-left
+2. Loading states: use skeleton shimmer, never raw spinner on blank white
+3. Empty states: friendly message + illustration/emoji, never just plain text
+4. Korean UI labels: translate all to English
+   (user-generated content stays as-is)
+5. All section labels: Inter 10px 700 uppercase
+6. No ALL CAPS headings like "RECENTLY TAGGED" or "MY CLUBS"
+   — use section-label style instead
+7. Star ratings: always amber #F59E0B filled, #E5E5EA empty
+8. Progress bars: always 3px height, --green fill, #EBEBEB background,
+   border-radius 99px
+9. Book covers in lists: always with subtle shadow
+   (0 2px 8px rgba(0,0,0,0.08)), border-radius 5px
+10. All async operations: try/catch/finally,
+    never leave UI in permanent loading state

@@ -1,0 +1,219 @@
+Apply a full design refresh to the Kindread app.
+Follow every instruction exactly. No italics anywhere.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. FONTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Install two font packages:
+  expo install @expo-google-fonts/noto-serif-kr
+  npx expo install expo-font
+
+In App.tsx (or root layout), load fonts:
+
+  import {
+    NotoSerifKR_400Regular,
+    NotoSerifKR_500Medium,
+  } from '@expo-google-fonts/noto-serif-kr'
+  import { useFonts } from 'expo-font'
+
+  // Also load Pretendard as a local asset:
+  // Download Pretendard-Regular.otf, Pretendard-Medium.otf,
+  // Pretendard-SemiBold.otf, Pretendard-Bold.otf
+  // from https://github.com/orioncactus/pretendard/releases
+  // Place in assets/fonts/
+
+  const [fontsLoaded] = useFonts({
+    'Pretendard-Regular':  require('./assets/fonts/Pretendard-Regular.otf'),
+    'Pretendard-Medium':   require('./assets/fonts/Pretendard-Medium.otf'),
+    'Pretendard-SemiBold': require('./assets/fonts/Pretendard-SemiBold.otf'),
+    'Pretendard-Bold':     require('./assets/fonts/Pretendard-Bold.otf'),
+    NotoSerifKR_400Regular,
+    NotoSerifKR_500Medium,
+  })
+
+Create a global constants file constants/fonts.ts:
+
+  export const FONTS = {
+    regular:   'Pretendard-Regular',
+    medium:    'Pretendard-Medium',
+    semibold:  'Pretendard-SemiBold',
+    bold:      'Pretendard-Bold',
+    serif:     'NotoSerifKR_400Regular',
+    serifMd:   'NotoSerifKR_500Medium',
+  }
+
+FONT USAGE RULES — apply everywhere:
+  - ALL text in the app → Pretendard (regular/medium/semibold/bold)
+  - ONLY quote text (post_type = 'quote', qtext) → NotoSerifKR_400Regular
+  - NO italic anywhere. fontStyle: 'italic' must not exist in any file.
+  - Search codebase for fontStyle and remove every instance.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. COLOR PALETTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create constants/colors.ts and replace ALL hardcoded 
+color values across the entire codebase with these:
+
+  export const COLORS = {
+    bg:         '#F9F9F9',   // screen backgrounds
+    card:       '#FFFFFF',   // card surfaces
+    green:      '#16A06A',   // primary accent
+    greenDark:  '#0D7A4F',   // darker green (text on green bg)
+    greenDim:   '#E6F6EF',   // green tint background
+    amber:      '#F59E0B',   // star ratings only
+    blue:       '#1D4ED8',   // reading log pill
+    blueDim:    '#EFF6FF',   // reading log pill background
+    text:       '#0F0F0F',   // primary text
+    sub:        '#6E6E6E',   // secondary text
+    muted:      '#B0B0B0',   // placeholders, timestamps
+    line:       'rgba(0,0,0,0.06)',  // borders, dividers
+    quoteBg:    '#F0FAF5',   // quote card background
+    reviewDim:  '#FEF3C7',   // review pill background
+    reviewText: '#B45309',   // review pill text
+  }
+
+  Replace the current purple color used in session 
+  creation screens with COLORS.green.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. GLOBAL STYLE RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Apply these rules to every screen and component:
+
+  Screen backgrounds:    backgroundColor: COLORS.bg
+  Card/surface:          backgroundColor: COLORS.card
+  Card border:           borderWidth: 1, borderColor: COLORS.line
+  Card border radius:    borderRadius: 16
+  No card shadows:       remove all shadow/elevation props from cards
+  Dividers:              height: 1, backgroundColor: COLORS.line
+                         (not a full-opacity line)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. BOOKMARK CARD (BookmarkCard.tsx)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Post type pill — show in top-right of card header:
+  - post_type 'log'    → "Reading" / "독서 중"
+                         bg: COLORS.blueDim, text: COLORS.blue
+  - post_type 'quote'  → "Quote" / "인용"
+                         bg: COLORS.greenDim, text: COLORS.greenDark
+  - post_type 'review' → "Review" / "리뷰"
+                         bg: COLORS.reviewDim, text: COLORS.reviewText
+  Pill style: borderRadius: 99, paddingH: 8, paddingV: 3,
+              fontSize: 10, fontFamily: FONTS.semibold
+
+Quote block (post_type = 'quote'):
+  - Container: backgroundColor: COLORS.quoteBg,
+               borderLeftWidth: 2, borderLeftColor: COLORS.green,
+               borderRadius on right side only (0, 10, 10, 0),
+               padding: 12 13 12 15
+  - Quote text: fontFamily: FONTS.serif, fontSize: 14,
+                lineHeight: 26, color: '#1A2E22'
+                NO fontStyle italic
+  - Page number: fontFamily: FONTS.regular, fontSize: 10,
+                 color: COLORS.muted, textAlign: 'right',
+                 marginTop: 8
+
+Star ratings (post_type = 'review'):
+  - Filled star color: COLORS.amber (#F59E0B)
+  - Empty star color:  '#E5E5E5'
+  - Size: 15px
+
+Progress bar (post_type = 'log'):
+  - Track: height: 3, backgroundColor: '#EBEBEB', borderRadius: 99
+  - Fill:  backgroundColor: COLORS.green
+  - Label (p.10–84): fontFamily: FONTS.medium, fontSize: 11,
+                     color: COLORS.muted
+  - Percentage: fontFamily: FONTS.bold, fontSize: 11,
+                color: COLORS.greenDark
+
+Book info row:
+  - Background: COLORS.bg
+  - Border radius: 10
+  - Padding: 8 10
+  - Book title: fontFamily: FONTS.semibold, fontSize: 12,
+                color: COLORS.text  ← Pretendard, NOT serif
+  - Author: fontFamily: FONTS.regular, fontSize: 11,
+            color: COLORS.muted
+
+Action row (like/comment/share):
+  - Border top: 1px COLORS.line, marginTop: 10, paddingTop: 10
+  - Icon + count: fontSize: 12, color: COLORS.muted,
+                  fontFamily: FONTS.medium
+  - Liked state: color: COLORS.green, filled heart icon
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. FEED SCREEN (FeedScreen.tsx)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+App header:
+  - Title "Kindread": fontFamily: FONTS.bold, fontSize: 22,
+                      letterSpacing: -0.6, color: COLORS.text
+  - Bell icon button: circular, bg COLORS.card,
+                      border 1px COLORS.line, size 36
+
+Streak bar:
+  - Background: COLORS.card, border: 1px COLORS.line,
+                borderRadius: 12, marginH: 18, padding: 9 14
+  - Text: fontFamily: FONTS.regular, fontSize: 12,
+          color: COLORS.sub
+  - Numbers: fontFamily: FONTS.bold, color: COLORS.text
+  - CTA chip "Log today" / "오늘 기록하기":
+              bg: COLORS.greenDim, color: COLORS.greenDark,
+              fontFamily: FONTS.semibold, fontSize: 11,
+              borderRadius: 99, padding: 4 10
+
+Feed tabs (All/Friends or 전체/친구들):
+  - Active tab underline: COLORS.green
+  - Active text: FONTS.semibold, COLORS.text
+  - Inactive text: FONTS.medium, COLORS.muted
+  - No background color on tabs, just underline
+
+Gap between cards: 10px (not divider lines)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. SESSIONS STRIP (FeedScreen.tsx)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session card:
+  - bg: COLORS.card, border: 1px COLORS.line, borderRadius: 14
+  - Book thumb: 40×55, borderRadius: 5
+  - Title: fontFamily: FONTS.medium, fontSize: 11, color: COLORS.text
+  - Deadline chip: bg COLORS.greenDim, text COLORS.greenDark,
+                   fontFamily: FONTS.semibold, fontSize: 10,
+                   borderRadius: 99
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. BOTTOM NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  - Background: rgba(255,255,255,0.96) with blur effect
+  - Border top: 1px COLORS.line
+  - Active icon + label: COLORS.greenDark
+  - Inactive: COLORS.muted
+  - Label: fontFamily: FONTS.medium, fontSize: 10
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. FAB BUTTON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  - Background: #0F0F0F (same on ALL screens — feed and profile)
+  - Size: 50×50, borderRadius: 25
+  - Shadow: shadowColor '#000', shadowOpacity 0.18,
+            shadowRadius 16, elevation 8
+  - Icon: white pencil icon
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After applying all changes:
+1. Search entire codebase for fontStyle — must return 0 results
+2. Search for #FFFFFF used as screen background — replace with COLORS.bg
+3. Search for the old green (#2D6A4F or #40916C or #1A5C3A) — 
+   replace all with COLORS.green or COLORS.greenDark as appropriate
+4. Confirm Pretendard loads correctly on device
+5. Confirm Noto Serif KR appears only in quote text blocks

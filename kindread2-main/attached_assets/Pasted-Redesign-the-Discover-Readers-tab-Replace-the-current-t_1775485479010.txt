@@ -1,0 +1,85 @@
+Redesign the Discover > Readers tab. Replace the current 
+three empty sections with these four, in this order:
+
+── Section 1: Reading the same books as you ──
+
+Query: find users who have bookmarks with the same book_ids 
+as the current user's bookmarks, excluding users already 
+followed and excluding self. Rank by number of shared books.
+
+If currentUser has no logged books yet, replace this section 
+with "Readers who loved this book" using the top 3 most 
+bookmarked book_ids in the entire bookmarks table as fallback 
+— show one horizontal row per book.
+
+── Section 2: Readers you might know ──
+
+Query: find users who are followed by people the current user 
+follows (friends of friends), excluding users already followed 
+and excluding self. Rank by how many mutual follows they share.
+
+  SELECT following_id, COUNT(*) as mutual_count
+  FROM follows
+  WHERE follower_id IN (
+    SELECT following_id FROM follows 
+    WHERE follower_id = currentUserId
+  )
+  AND following_id != currentUserId
+  AND following_id NOT IN (
+    SELECT following_id FROM follows 
+    WHERE follower_id = currentUserId
+  )
+  GROUP BY following_id
+  ORDER BY mutual_count DESC
+  LIMIT 10
+
+── Section 3: Active this week ──
+
+Query: users who have created at least one bookmark in the 
+last 7 days, excluding self and already-followed users, 
+ordered by most recent activity first.
+
+  SELECT DISTINCT bookmarks.user_id, profiles.*,
+    MAX(bookmarks.created_at) as last_active
+  FROM bookmarks
+  JOIN profiles ON bookmarks.user_id = profiles.id
+  WHERE bookmarks.created_at > NOW() - INTERVAL '7 days'
+  AND bookmarks.user_id != currentUserId
+  AND bookmarks.is_public = true
+  GROUP BY bookmarks.user_id, profiles.id
+  ORDER BY last_active DESC
+  LIMIT 10
+
+── Section 4: Global readers ──
+
+Query: all users ranked by follower count descending. 
+This is the default fallback that always has content.
+
+  SELECT profiles.*, COUNT(follows.follower_id) as follower_count
+  FROM profiles
+  LEFT JOIN follows ON profiles.id = follows.following_id
+  WHERE profiles.id != currentUserId
+  GROUP BY profiles.id
+  ORDER BY follower_count DESC
+  LIMIT 20
+
+── Reader card design ──
+
+Each reader card (used in all sections) should show:
+- Avatar + username + bio (1 line truncated)
+- Their current book cover (most recent bookmark's book)
+- Follower count
+- Follow / Following button (inline, optimistic update)
+- Tapping the card navigates to their public profile
+
+── Near You ──
+
+Remove "Near You" as a default section entirely.
+Only show it if profiles.city is not null for currentUser.
+Do not prompt for location permission on this screen.
+
+── Empty state ──
+
+If ALL sections return zero results (brand new app, no users),
+show a single message: "Be one of the first readers on Kindread"
+with the current user's own profile card as a shareable card.

@@ -1,0 +1,118 @@
+Redesign the post detail page (currently called "Bookmark" page) in Kindread.
+Apply to both Progress and Review post types.
+
+---
+
+OVERALL STRUCTURE (top to bottom):
+
+1. Top bar
+2. Book hero
+3. User row
+4. Rating stars (Review only)
+5. Quote
+6. Note
+7. Photo scroll (if photos exist)
+8. Actions
+9. Comments
+10. Input bar (fixed bottom)
+
+---
+
+1. TOP BAR
+- Left: ← Back button
+- Right: ··· button → opens edit/delete options
+- Remove the current "Bookmark" title entirely
+
+---
+
+2. BOOK HERO
+Display at the very top, below the top bar.
+Tapping this section navigates to the Book Detail page.
+
+Layout: horizontal flex, padding 16px 20px, border-bottom 1px #EBEBEB
+
+- Left: book cover image, 60x86px, borderRadius 5px, subtle box-shadow
+- Right (flex:1):
+  - Book title: 15px, fontWeight 700
+  - Author: 12px, color #777, margin-bottom 6px
+  - Genre · Year: inline, fontSize 11px, color #777, separated by · divider
+  - [Progress posts only] thin progress bar (2px, green #2A7A52) below genre/year
+    + label: "p.X of Xp · X%" in 11px green fontWeight 600
+- Far right: › arrow, 16px, color #CCC
+
+Do NOT show rating, reading count, or finished count here.
+
+---
+
+3. USER ROW
+- Avatar (38px) + name + @handle + time
+- [Progress posts] show "p.X → p.X" inline after time, muted color
+- Avatar streak dot: if streak >= 3, show 🔥 at bottom-right of avatar
+  (13x13px circle, white bg, box-shadow 0 0 0 1px #eee)
+
+---
+
+4. RATING (Review only)
+- Stars only, no text label
+- ★ filled: #F59E0B, empty: #E5E5EA
+- fontSize 18px, letterSpacing 2px
+- padding 14px 20px 0
+
+---
+
+5. QUOTE (if exists)
+- Position relative, paddingLeft 20px, margin 16px 20px 12px
+- &ldquo; mark: Playfair Display, 52px, color #2A7A52, absolute top:-12px left:-4px
+- Quote text: Playfair Display, 15px, color #2A7A52, lineHeight 1.8
+
+---
+
+6. NOTE (if exists)
+- Inter sans-serif, 14px, color #0a0a0a, lineHeight 1.7
+- padding 0 20px 16px
+
+---
+
+7. PHOTO SCROLL (if photos exist, max 3)
+- Horizontal scroll container, padding 0 20px 16px
+- overflow-x: auto, no scrollbar visible
+- Each photo: width 200px, height 160px, borderRadius 8px, objectFit cover
+- Gap 8px between photos
+- First photo starts flush with left padding
+
+---
+
+8. ACTIONS
+- border-top and border-bottom: 1px solid #EBEBEB
+- padding 14px 20px
+- Left: ♡ count (red #EF4444 when liked) · 💬 count
+- Right: ↗ share
+- No dot separator between ♡ and 💬
+
+---
+
+9. COMMENTS
+- Section label: "Comments · N" in 10px uppercase, letterSpacing 0.1em, color #999
+- Each comment: avatar (28px) + name (12px 600) + text (13px) + time (11px #999)
+- padding 20px 20px 0
+
+---
+
+10. COMMENT INPUT (fixed bottom)
+- Fixed to bottom of screen
+- Background white, border-top 1px #EBEBEB
+- Rounded input field + green send button (36px circle, background #2A7A52)
+
+---
+
+NAVIGATION:
+- Tapping the book hero section → navigate to Book Detail page
+- The ··· menu → show Edit and Delete options
+
+---
+
+KEEP UNCHANGED:
+- All color tokens (green #2A7A52, etc.)
+- Font families (Inter for UI, Playfair Display for quotes only)
+- No italics anywhere
+- All other screens (Feed, Discover, Clubs, Me)

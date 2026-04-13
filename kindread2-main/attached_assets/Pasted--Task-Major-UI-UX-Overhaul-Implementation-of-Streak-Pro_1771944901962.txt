@@ -1,0 +1,61 @@
+**Task: Major UI/UX Overhaul - Implementation of "Streak & Progress" Design System**
+
+We are completely revamping the main feed and the logging flow based on the new design mockups provided.
+
+Please execute the following 3 major phases of updates.
+
+**Phase 1: Main Feed Structure & Header Redesign [Reference: image_23.png left side]**
+
+1.  **New Header with Streak Bar:**
+    * Replace the current simple header with a new container.
+    * Add a "Streak Bar" at the top with a fire emoji (🔥), text like "7-day streak!", and a prominent green "Log today" button on the right.
+    * Ensure the main app title "Kindread" and user profile avatar/notification icons remain above this new streak bar.
+
+2.  **Tab Renaming:**
+    * Rename the main tabs on the feed:
+        * "Logs" -> changed to **"Progress"**
+        * "Reflections" -> changed to **"Reviews"**
+    * Keep "All" as the first tab.
+
+**Phase 2: Feed Card Component Redesign [Reference: image_23.png left side, image_24.png]**
+
+Update the individual post cards in the feed to match the new high-density layout:
+
+1.  **Layout Restructuring:**
+    * Move user info (avatar, name, time) back to the top left.
+    * Move the book cover thumbnail to the left side, below the user info.
+
+2.  **Reading Data display (New):**
+    * **Page Range & Percentage:** To the right of the user info, add the specific pages read in this session (e.g., "p.88-134") and the current percentage (e.g., "32%").
+    * **Large Progress Bar:** Below the user info, add a prominent, thick horizontal progress bar.
+        * Use the Accent Green (#2A7A52) for the "read" portion.
+        * Use a light gray for the "remaining" portion.
+
+3.  **Quote Styling (Green Emphasis):**
+    * If a post contains a quote:
+        * Add a large, green opening quotation mark icon (“) before the text.
+        * Render the quote text itself in the Accent Green color (#2A7A52) using the Playfair Display (Serif) font. *Note: Re-enable italics ONLY for this specific quote text style.*
+
+4.  **Review Ratings:**
+    * If the post type is "Review" (formerly Reflection), display a 5-star rating component below the book title/author.
+
+**Phase 3: New Two-Step Logging Flow [Reference: image_25.png, image_26.png, image_27.png]**
+
+Replace the current single-screen logging flow with a new two-step process triggered by the "Log today" button or FAB.
+
+1.  **Step 1: Page Input Modal [Reference: image_25.png]**
+    * Create a modal showing the selected book title and its current progress bar.
+    * Provide a large numerical input field for "PAGES READ TODAY".
+    * Add a large "Continue" main button.
+    * Add a text link below: "I finished the book" (This should trigger a state change to treat the next step as a Review).
+
+2.  **Step 2: Quote & Note Bottom Sheet [Reference: image_26.png, image_27.png]**
+    * After clicking "Continue", present a bottom sheet.
+    * **Quote Search Input:** Add a text input area for quotes. Implement search logic: as the user types, query the database for existing quotes associated with this book_id and display suggestions. Allow selection or free text entry.
+    * **Note Input:** Add a separate text area for general thoughts ("Your Note").
+    * **Final Action:** Add a large "Share to feed" button and a "Log without note" link.
+
+**Technical Constraints & Database Updates:**
+* You will need to add necessary columns to the `bookmarks` table in Supabase, such as `rating` (integer 1-5), and potentially `page_range_start` / `page_range_end` for specific log entries.
+* Maintain the strict white background (#FFFFFF) and border-only theme established previously. Do not introduce shadows.
+* **Constraint:** DO NOT run tests. Focus on UI implementation and flow logic.

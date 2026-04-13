@@ -1,0 +1,41 @@
+Project Update: Professional UI/UX Overhaul (The 'Modern Reader' Update)
+
+Objective: Redesign the entire app UI to match the high-density, clean aesthetic of Instagram and Threads while keeping the 'Paper & Ink' theme for book lovers.
+
+1. Global Typography & Density (Instagram/Threads Style):
+
+Font Sizes: Reduce all secondary text (dates, usernames, book authors) to a smaller, refined size (12px - 13px).
+
+Primary Text: Set the main 'Margin' thought text to 15px with a generous lineHeight (approx 1.5) for readability.
+
+Icons: Use Lucide-React-Native icons exclusively. Set them to a smaller, professional size (20px). Ensure they are pre-loaded in App.tsx so they never appear as empty boxes.
+
+2. The 'Margin' Card Redesign (Feed & Notebook):
+
+Layout: Mimic a 'Threads' post. Small user avatar, username in bold sans-serif, and the thought text in a high-quality Serif.
+
+Book Integration: Place the tagged book cover as a small, elegant thumbnail (approx 50px width) within the card, not taking up the whole width.
+
+Interactions: Add subtle, standard social icons (Heart, Comment, Share) at the bottom of each card, but keep them minimal.
+
+3. Search Results (Perfected 3-Column Grid):
+
+The Layout: Maintain 3 columns for search results.
+
+The Math: Calculate card width as (ScreenWidth - totalPadding) / 3. Use numColumns={3} in the FlatList.
+
+Visibility: Ensure the right-most column is fully visible on a 390px mobile viewport by using flexible percentage-based widths or flex: 1 on the card container.
+
+4. Navigation & Header:
+
+Header: Use a much smaller, centered 'Kindread' logo or text at the top.
+
+Bottom Nav: Make the icons smaller and remove all labels. It should look like a clean, high-end mobile app bar.
+
+5. Stability & Logic:
+
+Keep the Naver + Google parallel search but ensure the UI doesn't "jump" when results load.
+
+Ensure the 'Edit Margin' flow is seamlessly integrated into this new refined design.
+
+Execution: Please use my Replit Core credits for this complete visual transformation. Focus on consistent padding (16px) across the entire app.

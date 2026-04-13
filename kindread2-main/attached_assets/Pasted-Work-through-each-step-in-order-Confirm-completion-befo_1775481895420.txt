@@ -1,0 +1,290 @@
+Work through each step in order. Confirm completion before moving 
+to the next.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — FIX SCHEMA: bookmarks table
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run this in the Supabase SQL editor:
+
+  ALTER TABLE bookmarks
+    ADD COLUMN IF NOT EXISTS rating     NUMERIC(2,1) 
+      CHECK (rating >= 0 AND rating <= 5),
+    ADD COLUMN IF NOT EXISTS quote_text TEXT,
+    ADD COLUMN IF NOT EXISTS mood_tags  TEXT[] DEFAULT '{}';
+
+  UPDATE bookmarks
+  SET
+    text_content = REGEXP_REPLACE(
+      text_content, '<!--meta:.*?:meta-->', '', 'g'
+    )
+  WHERE text_content LIKE '%<!--meta:%';
+
+  ALTER TABLE bookmarks
+    DROP CONSTRAINT IF EXISTS bookmarks_post_type_check;
+
+  ALTER TABLE bookmarks
+    ADD CONSTRAINT bookmarks_post_type_check
+    CHECK (post_type IN ('log', 'quote', 'review'));
+
+Then in the codebase:
+
+- Remove ALL logic that reads or writes the <!--meta:{...}:meta--> 
+  prefix pattern. Search for '<!--meta' to find every occurrence.
+- For reviews: write rating column directly (0.5–5.0 in 0.5 steps)
+- For quotes: write quote_text column directly
+- For logs: rating and quote_text are null
+- Update all SELECT queries in lib/storage.ts to include rating 
+  and quote_text columns
+- Update the TypeScript Bookmark type:
+    rating?: number | null
+    quoteText?: string | null
+    moodTags?: string[]
+- Update BookmarkCard, BookmarkDetailScreen, EditBookmarkScreen 
+  to read from the new fields directly instead of parsing meta prefix
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — FOLLOW SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run in Supabase SQL editor:
+
+  CREATE TABLE IF NOT EXISTS follows (
+    id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    follower_id  UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(follower_id, following_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_follows_follower  
+    ON follows(follower_id);
+  CREATE INDEX IF NOT EXISTS idx_follows_following 
+    ON follows(following_id);
+
+In lib/storage.ts add:
+- followUser(followerId, followingId)
+- unfollowUser(followerId, followingId)
+- isFollowing(followerId, followingId) → boolean
+- getFollowCounts(userId) → { followers: number, following: number }
+- getFollowers(userId) → profile[]
+- getFollowing(userId) → profile[]
+
+On the profile screen (Me tab and any public profile view):
+- Replace hardcoded 0s with real follower/following counts
+- Tapping the counts opens a modal list of followers/following
+- When viewing another user's profile, show Follow/Unfollow button
+  that calls followUser / unfollowUser and updates optimistically
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — SOCIAL FEED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update FeedScreen to show two tabs:
+
+"Friends" tab → posts from users the current user follows:
+  SELECT bookmarks.*, profiles.username, profiles.avatar_url
+  FROM bookmarks
+  JOIN profiles ON bookmarks.user_id = profiles.id
+  WHERE bookmarks.user_id IN (
+    SELECT following_id FROM follows 
+    WHERE follower_id = currentUserId
+  )
+  AND bookmarks.is_public = true
+  ORDER BY bookmarks.created_at DESC
+
+"All" tab → keep existing behavior (own posts)
+
+If Friends tab is empty (user follows nobody), show:
+  "Find readers to follow — try Discover"
+  with a button navigating to the Discover tab.
+
+Remove the existing Progress and Reviews sub-tabs from the 
+feed header — these belong on the profile page, not the feed.
+The feed header should only have: Friends | All
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — NOTIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The notifications table already exists. Add these 3 Supabase 
+database triggers via SQL:
+
+  -- Trigger 1: Like notification
+  CREATE OR REPLACE FUNCTION notify_on_like()
+  RETURNS TRIGGER AS $$
+  DECLARE
+    bookmark_owner UUID;
+  BEGIN
+    SELECT user_id INTO bookmark_owner 
+    FROM bookmarks WHERE id = NEW.bookmark_id;
+    
+    IF bookmark_owner != NEW.user_id THEN
+      INSERT INTO notifications 
+        (user_id, actor_id, type, bookmark_id)
+      VALUES 
+        (bookmark_owner, NEW.user_id, 'like', NEW.bookmark_id);
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER trigger_notify_like
+    AFTER INSERT ON bookmark_likes
+    FOR EACH ROW EXECUTE FUNCTION notify_on_like();
+
+  -- Trigger 2: Comment notification
+  CREATE OR REPLACE FUNCTION notify_on_comment()
+  RETURNS TRIGGER AS $$
+  DECLARE
+    bookmark_owner UUID;
+  BEGIN
+    SELECT user_id INTO bookmark_owner 
+    FROM bookmarks WHERE id = NEW.bookmark_id;
+    
+    IF bookmark_owner != NEW.user_id THEN
+      INSERT INTO notifications
+        (user_id, actor_id, type, bookmark_id)
+      VALUES
+        (bookmark_owner, NEW.user_id, 'comment', NEW.bookmark_id);
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER trigger_notify_comment
+    AFTER INSERT ON bookmark_comments
+    FOR EACH ROW EXECUTE FUNCTION notify_on_comment();
+
+  -- Trigger 3: Session join notification
+  CREATE OR REPLACE FUNCTION notify_on_session_join()
+  RETURNS TRIGGER AS $$
+  DECLARE
+    club_host UUID;
+  BEGIN
+    SELECT host_id INTO club_host 
+    FROM clubs WHERE id = NEW.club_id;
+    
+    IF club_host != NEW.user_id THEN
+      INSERT INTO notifications
+        (user_id, actor_id, type, club_id)
+      VALUES
+        (club_host, NEW.user_id, 'session_join', NEW.club_id);
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER trigger_notify_session_join
+    AFTER INSERT ON club_members
+    FOR EACH ROW EXECUTE FUNCTION notify_on_session_join();
+
+Make sure the notifications table has these columns — 
+add any that are missing:
+  id, user_id, actor_id, type, bookmark_id (nullable), 
+  club_id (nullable), is_read (boolean default false), 
+  created_at
+
+In NotificationsScreen:
+- Fetch notifications for currentUser ordered by created_at DESC
+- Each row: actor avatar | "{name} liked your post / commented / 
+  joined your session" | time ago
+- Tapping a like/comment notification navigates to that bookmark
+- Tapping a session_join notification navigates to that session
+- Mark all as read (is_read = true) when screen is opened
+- Show an unread red dot on the bell icon in the app header 
+  when there are unread notifications (is_read = false)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — BOOK SESSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sessions live in two places: browse/join in Discover, 
+participate from a strip on Feed. No separate Sessions tab —
+keep nav bar as: Feed · Discover · Me
+
+── 5A: Your Sessions strip on FeedScreen ──
+
+At the top of FeedScreen, above the post feed, add a 
+horizontal scrollable strip showing the current user's 
+joined sessions:
+
+  SELECT clubs.* FROM clubs
+  JOIN club_members ON clubs.id = club_members.club_id
+  WHERE club_members.user_id = currentUserId
+  AND clubs.type = 'session'
+  ORDER BY clubs.deadline ASC
+
+Each card shows:
+- Book cover image (small square, use clubs.image_url 
+  or the linked book's cover_url)
+- Session name (1 line truncated)
+- Deadline: "8 days left" or "Ended" if past deadline
+- Member count
+
+Tapping a card navigates to the session detail screen.
+
+If user has no active sessions, show one ghost card:
+  "Join a session →" that navigates to Discover tab.
+
+── 5B: Sessions in Discover ──
+
+Sessions are already in Discover — keep that placement.
+Make sure each session card shows: book cover, session name,
+member count, deadline, and a Join button.
+Already-joined sessions show "Joined ✓" instead.
+
+── 5C: Session detail screen ──
+
+When a user taps any session card, show:
+- Book cover + title + author
+- Session name + "hosted by @username" with host avatar
+- Deadline countdown ("12 days left") + member count
+- Join / Leave button (require_approval = false for all 
+  MVP sessions — auto join)
+- Feed of all bookmarks where club_id = this session's id,
+  ordered by created_at DESC, showing all members' posts
+- Sticky bottom bar: "Log reading in this session" button
+  that opens PostFABMenu pre-filled with this book and club_id
+
+── 5D: Create Session ──
+
+In Discover, add a "Start a session +" button at the top.
+
+Simplify CreateClubFlowScreen to only collect:
+- Book (required) — use existing book search
+- Session name (required)
+- Reading deadline (required, date picker)
+- Online / Offline toggle
+- If offline: city field
+- If online: optional link field
+- Description (optional, max 200 chars)
+
+On submit:
+- Create clubs row: type = 'session', require_approval = false,
+  format = 'online' or 'offline' per toggle
+- Auto-create club_members row for creator with role = 'host'
+- Navigate to the new session detail screen
+
+Remove from CreateClubFlowScreen: join questions, 
+welcome_template, vote features, staff roles, 
+require_approval toggle — not needed for MVP.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — PUBLIC PROFILE PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When tapping any user's avatar or name anywhere in the app
+(feed posts, session member list, comments, notifications),
+navigate to their public profile.
+
+Same layout as Me tab but:
+- Shows Follow/Unfollow button instead of Edit Profile
+- Shows real follower/following counts (tappable → modal list)
+- Only shows posts where is_public = true
+- Shows their active sessions (joined or hosted)
+- Does NOT show their private stats
+
+Make sure every BookmarkCard's avatar and username are 
+tappable and navigate to the correct user profile.
+Every comment row's avatar should also be tappable.

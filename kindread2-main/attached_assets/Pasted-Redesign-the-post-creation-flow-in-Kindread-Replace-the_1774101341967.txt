@@ -1,0 +1,200 @@
+Redesign the post creation flow in Kindread.
+Replace the current "New Bookmark" screen with a bottom sheet
+that has 3 distinct entry points. All UI text in English.
+
+---
+
+ENTRY POINT: FAB BUTTON
+
+When the FAB (✏ pencil) button is tapped on the Feed screen:
+- The FAB rotates to an ✕ icon
+- A scrim (rgba 0,0,0,0.4) appears behind
+- 3 options animate up from above the FAB, staggered:
+
+  [✓]  Log reading      ← green circle button
+  ["]  Save a quote     ← white circle, green serif quote mark
+  [★]  Write a review   ← amber circle button
+
+  Each option: icon button (48px circle) + label pill
+  (black bg, white text, border-radius 20px)
+  Stagger animation: 50ms delay between each, popIn ease
+
+Tapping scrim or ✕ closes the menu.
+Tapping an option opens the corresponding bottom sheet.
+
+---
+
+BOTTOM SHEET — SHARED BEHAVIOR
+
+- border-radius: 24px 24px 0 0
+- handle bar: 40px wide, 4px tall, #E0E0E0, centered, margin-top 14px
+- Header: close ✕ button (left) · sheet title (center) · Share button (right)
+- Share button: disabled until minimum conditions met (see each sheet)
+- Share button active state: black bg, white text
+- Sheet scrollable, max-height 90vh
+- Animation: slide up from bottom, 0.28s cubic-bezier(.2,.8,.3,1)
+
+---
+
+INLINE BOOK SELECTOR (shared across all 3 sheets)
+
+Display as a compact pill at the top of each sheet:
+  [book cover 28x40px] [title] [progress % or "Finished"] [›]
+  Background: #F5F5F5, border-radius 10px, padding 8px 12px
+
+Default behavior:
+  - Auto-select the book the user is currently reading
+    (most recent active bookmark from bookmarks table)
+  - For Review sheet: auto-select most recently finished book
+
+When tapped:
+  - Pill expands inline (no navigation, no new screen)
+  - A search input appears below the pill within the same sheet
+  - User's current books appear immediately as results
+    (currently reading first, then finished, then want-to-read)
+  - Typing filters by title or author
+  - Each result row: cover (36x50px) + title + author +
+    thin progress bar + "X% · reading" or "✓ Finished"
+  - Tapping a result collapses the search back into the pill
+    showing the selected book
+  - The sheet content below the pill does not move during search
+
+---
+
+SHEET 1: LOG READING
+
+Title: "Log reading"
+Share button active when: pages > 0
+
+Book selector pill (auto-filled, expandable inline)
+
+Pages section:
+  Label: "PAGES READ TODAY" (section-label style)
+  Stepper: [−] button · large number (Playfair Display 48px) · [+] button
+  Quick buttons row: [10p] [20p] [30p] [50p]
+    Each: border 1px #EBEBEB, border-radius 10px, Inter 13px 600
+    Tap: adds that number to current count
+
+  Progress calculation:
+    current_page = previous bookmark page + pages logged today
+    progress_pct = current_page / total_pages (from books table,
+      or user_total_pages if they've set it)
+    Store both current_page and progress_pct on submit
+
+Expandable sections (collapsed by default, tap to expand):
+  "Add a thought"
+    → textarea, Inter 14px, placeholder "How you felt, what you noticed..."
+    → max 280 chars, char counter bottom-right
+
+  "Add a quote"
+    → textarea, Playfair Display 14px, green color (#2A7A52)
+    → placeholder "A passage that stood out..."
+    → Below textarea: "Others highlighted from this book"
+      → fetch top 3 quotes from other users' bookmarks for this book
+      → each quote is a tappable button that fills the textarea
+      → Playfair Display 13px, green text, #F8F8F8 bg, border-radius 8px
+
+---
+
+SHEET 2: SAVE A QUOTE
+
+Title: "Save a quote"
+Share button active when: quote textarea has text
+
+Book selector pill (auto-filled, expandable inline)
+
+Large quote input:
+  - "&ldquo;" decorative mark: Playfair Display 44px, green, absolute top-left,
+    opacity 0.3
+  - textarea: Playfair Display 17px, padding-left 44px to clear the mark,
+    no border, only border-bottom 2px solid #EBEBEB (green when focused)
+  - placeholder: "Type or pick a quote..."
+  - min-height 120px
+
+Below input:
+  "OTHERS HIGHLIGHTED FROM THIS BOOK" section label
+  → fetch top 3 quotes from other users' bookmarks for this book
+  → tappable, fills textarea on tap
+
+Page number (optional):
+  "p." label + small number input (70px wide)
+  border-radius 8px, font-size 18px, centered
+  Label: "Page number (optional)"
+
+---
+
+SHEET 3: WRITE A REVIEW
+
+Title: "Write a review"
+Share button active when: rating > 0
+
+Book selector pill (auto-filled with last finished book, expandable inline)
+
+Star rating:
+  5 large stars (40px), amber #F59E0B when filled, #E5E5EA when empty
+  Tap to set rating — tapping same star again deselects
+  Label below stars changes by rating:
+    1 = "Not for me"
+    2 = "It was okay"
+    3 = "Liked it"
+    4 = "Loved it"
+    5 = "Obsessed"
+  Label: Inter 13px 600, color #2A7A52
+
+Favorite quote (optional):
+  Playfair Display textarea, 2 rows
+  Same style as Save a quote sheet
+
+Review text (optional):
+  Inter textarea, 4 rows
+  placeholder: "What did you think? What stayed with you?"
+  max 500 chars
+
+Photos (optional):
+  Horizontal scroll row
+  First item: dashed border add button (72x72px, border-radius 8px)
+  Up to 3 photos total
+  Added photos: 72x72px thumbnails with remove ✕ button overlay
+
+---
+
+DATA ON SUBMIT
+
+Log reading:
+  INSERT into bookmarks:
+    user_id, book_id, page_number (current_page),
+    progress_type = 'page',
+    note (if entered), quote (if entered),
+    created_at
+
+Save a quote:
+  INSERT into bookmarks:
+    user_id, book_id, quote (required), page_number (optional),
+    progress_type = 'quote',
+    created_at
+
+Write a review:
+  INSERT into bookmarks:
+    user_id, book_id, rating (required),
+    quote (optional), note (optional),
+    photos (optional, array of storage URLs),
+    progress_type = 'review',
+    status = 'finished',
+    created_at
+  UPDATE bookmarks SET status = 'finished' for this user + book
+
+After submit:
+  Close sheet, show brief success toast ("Shared ✓")
+  Refresh feed
+
+---
+
+DESIGN TOKENS:
+  Green: #2A7A52 · Green bg: #E8F3ED
+  Text: #0A0A0A · Muted: #888 · Dim: #CCC
+  Border: #EBEBEB · Surface: #F5F5F5
+  Amber: #F59E0B · Red: #EF4444
+  Font UI: Inter · Font quotes/display: Playfair Display
+  No italics · White backgrounds · Border-radius 10-12px for inputs
+  All async: try/catch/finally
+  Never leave UI stuck in loading state
